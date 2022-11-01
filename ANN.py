@@ -1,12 +1,15 @@
+from distutils.log import error
 import math
 from random import seed
 from random import random
-seed(10)
+import xdrlib
+seed(200)
 class NeuralNet:
     def __init__(self, layerAmount, layers, dataset = []):
         self.layerAmount = layerAmount
         self.layers = layers
         self.dataset = dataset
+        self.errors = []
     def createLayers(self):
         for x in range(self.layerAmount):
             if x==0:
@@ -16,14 +19,21 @@ class NeuralNet:
             else:
                 self.layers[x].createNeurons(self.layers[x+1], self.layers[x-1])
             print(self.layers[x])
-            for y in self.layers[x].neurons:
-                print(y)
+            # for y in self.layers[x].neurons:
+            #     print("NEURON OF TYPE: ", self.layers[x].type, "is giving to a neuron of type: ", y.givingTo.type)
 
     def sigmoid(self, x):
         return 1 / (1 + math.exp(-x)) 
     
     def derivativeSigmoid(self, x):
         return (math.exp(-x))/((1+math.exp(-x))**2)
+
+    def inverseSigmoid(self, x):
+       
+        x = x*0.999999
+        print("INPUT TO INVERSE IS:", x)
+        return -math.log((1 / (x)) - 1)
+       # return -(math.log((1/x)-1))
 
     def meanSquared(self, error):
         error = 0.5*(error**2)
@@ -68,6 +78,29 @@ class NeuralNet:
 
         return self.meanSquared(total_error)
 
+    def storeErrorSignal(self):
+        for layer in reversed(self.layers):
+            if layer.type=="output":
+                print("THE ERROR SIGNAL OF NEURONS ON LAYER: OUTPUT ARE")
+                for neuron in layer.neurons:
+                    neuron.errorSignals[0] = neuron.error
+                    print(neuron.errorSignals)
+                
+            else:
+                print("THE ERROR SIGNAL OF NEURONS ON LAYER:", layer.type, "ARE")
+                for neuron in range(len(layer.neurons)):
+                    print("INPUT X/VALUE IS:", layer.neurons[neuron].value)
+                    x=self.derivativeSigmoid(self.inverseSigmoid(layer.neurons[neuron].value))
+                    for weight in range(len(layer.neurons[neuron].weights)):
+                        errorSig = 0
+                        w = layer.neurons[neuron].weights[weight]
+                        for signal in layerToRight.neurons[weight].errorSignals:
+                            errorSig+=w*signal
+                        layer.neurons[neuron].errorSignals[weight]= x*errorSig
+                    print(layer.neurons[neuron].errorSignals)                   
+                        
+                    
+            layerToRight=layer
 
 
     def calculateError(self):
@@ -79,14 +112,33 @@ class NeuralNet:
             error += self.forwardPass(case[0], case[1])
             
         print("OVERALL ERROR IS:", error)
+        self.errors.append(error)
         return error
     
-    def backprop(self, error, rate):
+    def backprop(self, error, rate, callAmount):
+        print("BEGGINING BACKPROPAGATION \n *****************")
+        self.storeErrorSignal()
         for layer in reversed(self.layers):
+            print("PERFORMING ON LAYER OF TYPE:", layer.type)
             if layer.type=="output":
-                for neuron in layer.neurons:
-                    for prevN in neuron.receivingFrom:
-                        prevN.weight+=rate*neuron.error*derivativeSigmoid() #CONTINUE HERE
+                for neuron in range(len(layer.neurons)):
+                    print("PERFORMING ON WEIGHTS CONNECTED TO NEURON WITH VALUE:", layer.neurons[neuron].value)
+                    for prevN in layer.neurons[neuron].receivingFrom.neurons:
+                        #print("NEURON OF TYPE:", layer.neurons[neuron].receivingFrom.type, ", RELATIVE TO NEURON WITH VALUE:", layer.neurons[neuron].value, "CURRENTLY HAS A WEIGHT OF:", prevN.weights[neuron])
+                        prevN.weights[neuron]+=rate*layer.neurons[neuron].error*self.derivativeSigmoid(prevN.weights[neuron]*prevN.value)
+            else:
+                for neuron in range(len(layer.neurons)):
+                    for weight in range(len(layer.neurons[neuron].weights)):
+                        layer.neurons[neuron].weights[weight]+=rate*layer.neurons[neuron].errorSignals[weight]*layer.neurons[neuron].value
+
+                
+        #Stopping
+        if self.calculateError() < 0.3 or callAmount > 450:
+            return error
+        else:
+            self.backprop(self.calculateError, rate, callAmount+1)
+
+
     def __str__(self):
         return f"{self.layerAmount}, {self.layers}"
 class layer:
@@ -100,8 +152,10 @@ class layer:
             self.neurons[x]=neuron([], 1, next_layer, previous_layer)
             if self.type != "output":
                 self.neurons[x].weights = [random()]*next_layer.neuronAmount
+                self.neurons[x].errorSignals = [0]*next_layer.neuronAmount
             else:
                 self.neurons[x].error = 0
+                self.neurons[x].errorSignals = [0]
 
     def __str__(self):
         return f"LAYER:{self.neuronAmount}, {self.type}"
@@ -112,16 +166,20 @@ class neuron:
         self.bias = bias
         self.givingTo = givingTo
         self.receivingFrom = receivingFrom
+        self.errorSignals = []
     def __str__(self):
          return f"NEURON: {self.weights}, {self.givingTo}, {self.receivingFrom}"
 
 
 input_layer = layer(2, "input")
-h1 = layer(2, "hidden")
+h1 = layer(1, "hidden")
 output_layer = layer(1, "output")
 
 net = NeuralNet(3, [input_layer, h1, output_layer], [[[1,0],[0]], [[0,0],[0]], [[0,1],[0]], [[1,1],[1]]])
 
 net.createLayers()
-net.calculateError()
 
+net.backprop(net.calculateError(), 0.8, 0)
+
+for x in net.errors:
+    print(x)
