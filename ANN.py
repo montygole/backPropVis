@@ -110,7 +110,7 @@ class NeuralNet:
     #     self.errors.append(error)
     #     return error
     
-    def backprop(self, rate): #YOU ARE MAKING BACKPROP RUN PER CASE, WTIH ERROR PER CASE< NOT SUMMED OF EACH CASE ERROR!
+    def backprop(self, rate): 
         print("BEGGINING BACKPROPAGATION \n *****************")
         self.storeErrorSignal()
         for layer in reversed(self.layers):
