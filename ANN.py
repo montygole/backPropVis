@@ -110,7 +110,7 @@ class NeuralNet:
     #     self.errors.append(error)
     #     return error
     
-    def backprop(self, rate): 
+    def backprop(self, rate): #YOU ARE MAKING BACKPROP RUN PER CASE, WTIH ERROR PER CASE< NOT SUMMED OF EACH CASE ERROR!
         print("BEGGINING BACKPROPAGATION \n *****************")
         self.storeErrorSignal()
         for layer in reversed(self.layers):
@@ -178,21 +178,23 @@ class neuron:
 
 
 input_layer = layer(2, "input")
-h1 = layer(2, "hidden")
-h2 = layer(2, "hidden")
+h1 = layer(10, "hidden")
+h2 = layer(20, "hidden")
+h3 = layer(5, "hidden")
 
 # h3 = layer(1, "hidden")
 
 output_layer = layer(1, "output")
 
-net = NeuralNet(4, [input_layer,h1, h2,output_layer], [[[1, 0],[1]],[[0, 0],[0]]])
+net = NeuralNet(4, [input_layer,h1, h2,output_layer], [[[1, 0],[1]],[[0, 0],[0]],[[0, 1],[1]],[[1, 1],[0]]])
 
 net.createLayers()
 
-net.train(net.dataset, 0.9, 5000)
+net.train(net.dataset, random.uniform(0,0.09), 500)
 
-# for x in net.errors:
-#     print("ERRORS *****************")
-#     print(x)
+for x in net.errors:
+    print("ERRORS *****************")
+    print(x)
 
 net.forwardPass([1, 0], [1])
+net.forwardPass([0, 0], [0])
