@@ -1,122 +1,92 @@
-# =============================================================================
-# Displays the structure of a neural network using tkinter.
-# =============================================================================
-
-from functools import partial
 from tkinter import *
-import matplotlib.pyplot as plt
 
 # The number of nodes per layer
-LAYERS = [7, 4, 2, 4, 7]
+LAYERS = [5, 4, 3, 4, 5]
 
 # The size of the nodes displayed in layers
-NODE_DISPLAY_SIZE = 50
+NODE_DISPLAY_SIZE = 40
+NODE_DISPLAY_XPAD = 20
+NODE_DISPLAY_YPAD = 20
 
-# Represents a neuron in a network
-class NodeVis:
-    def __init__(self):
-        # TODO indivudial display paramters can be set here
-        pass
+# 
+class NetworkVis:
+    def __init__(self, layer_structure):
+        self.layers = [] # The layers of the network
+        self.nodes_linear = [] # The nodes visuals of the net in a linear array
+        self.weights_linear = [] # The weights of the net in a linear array
         
+        for i, node_count in enumerate(layer_structure):
+            layer = LayerVis(node_count)
+            self.layers.append(layer)
+            self.nodes_linear += layer.nodes
+            
+    def draw(self, parent, x, y):
+        previous_node_centers = self.layers[0].draw(parent, x, y, [])
+        
+        for i, layer in enumerate(self.layers[1:], start = 1):
+            x0 = x+i*(NODE_DISPLAY_SIZE+NODE_DISPLAY_XPAD)
+            y0 = y
+            previous_node_centers = layer.draw(parent,
+                                       x0,
+                                       y0,
+                                       #TODO map weights to colors
+                                       previous_node_centers
+                                   )
+        
+                    
 # Represents a layer of a network
 class LayerVis:
     def __init__(self, count):
         self.nodes = []
         for i in range(count):
-            nodes.append(NodeVis())
-
-#TEMP #DEBUG
-def callback_me(arg, event):
-    print('I am: ', arg.canvas.winfo_rootx())
-
-# Creates a clickable canvas
-# DEBUG note, this *was* intended to be used for interactivity
-# but tkinter doesn't play well with overlaying canvases.
-# However, this is still kept as it is an easy way to align the shapes
-def create_clickable_canvas_circle(parent, size, callback):
-    c = Canvas(parent, width=size, height=size)
-    c.bind('<Button-1>', callback)
-    c.create_oval(2, 2, size, size,
-                outline='', fill='')
-    return c
-
-# DEBUG: related to create_clickable_canvas_circle
-class NodeButton:
-    def __init__(self, parent, size):
-        self.canvas = create_clickable_canvas_circle(
-                    parent, size, partial(callback_me, self)
-                  )
-# DEBUG: related to create_clickable_canvas_circle
-def draw_layer(parent, size):
-    layer_canvas = Canvas(parent)
-    layer_canvas.configure(bg='red') #TEMP
-    
-    for i in range(size):
-        nb = NodeButton(layer_canvas, NODE_DISPLAY_SIZE)
-        nb.canvas.pack()
+            self.nodes.append(NodeVis())
+            
+    def draw(self, parent, x, y, previous_node_centers):
         
-    return layer_canvas
+        node_centers = []
+        for i, node in enumerate(self.nodes):
+            x0 = x
+            y0 = y + i*(NODE_DISPLAY_SIZE+NODE_DISPLAY_YPAD)
+            
+            node.draw(parent, 
+                          x0,
+                          y0,
+                          NODE_DISPLAY_SIZE/2
+                      )
+            
+            node_centers.append((x0, y0))
+            
+            for prev in previous_node_centers:
+                
+                parent.create_line(prev[0], prev[1], x0, y0)
+            
+        
+        return node_centers
 
+# Represents a neuron in a network
+class NodeVis:
+    def __init__(self):
+        pass
+    
+    def draw(self, parent, x, y, halfwidth):
+        parent.create_oval(
+                x - halfwidth, y - halfwidth,
+                x + halfwidth, y + halfwidth,
+                fill = 'white'
+            )
 
 # TODO should be packed into a main
-
-root = Tk()
-root.geometry('500x500')
-
-root_canvas = Canvas(root)
-root_canvas.pack(expand=Y, fill=BOTH)
-root_canvas.configure(bg='cyan') # TEMP color to help with viz
-
-
-# TODO: this name is not the best
-# Here it represents canvases that are used to position the shapes
-layers = []
-
-for count in LAYERS: # Creates layers based on the constant
-    layers.append(draw_layer(root_canvas, count))
-
-for l in layers: # Positions them as tkinter objects
-    l.pack(padx=20, side=LEFT)
-
-root.update() # Called to allow packing to happen so positions can be set
-
-for l in layers: # Removes the canvases from display, since we only need the positions
-    l.pack_forget()
-
-# Now, draw the shapes onto a single canvas using the positions after packing
-# Draw layers 0 to one short of the end
-for i in range(len(layers)-1):
-    l0 = layers[i]
-    l1 = layers[i+1]
-    for c0 in l0.winfo_children():
-        x0 = c0.winfo_rootx()-root.winfo_x()
-        y0 = c0.winfo_rooty()-root.winfo_y()
-        halfwidth = NODE_DISPLAY_SIZE / 2
-        
-        root_canvas.create_oval(
-                x0 - halfwidth, y0 - halfwidth,
-                x0 + halfwidth, y0 + halfwidth,
-                fill = '#F00'
-            )
-        
-        # Draw connections
-        for c1 in l1.winfo_children():
-            root_canvas.create_line(
-                x0, y0, 
-                c1.winfo_rootx()-root.winfo_x(), c1.winfo_rooty()-root.winfo_x(), 
-                width=1)
-            
-# Draw the final layer
-l0 = layers[-1]
-for c0 in l0.winfo_children():
-    x0 = c0.winfo_rootx()-root.winfo_x()
-    y0 = c0.winfo_rooty()-root.winfo_y()
-    halfwidth = NODE_DISPLAY_SIZE / 2
+def create_visualization(layer_structure):
+    root = Tk()
+    root.geometry('500x500')
     
-    root_canvas.create_oval(
-            x0 - halfwidth, y0 - halfwidth,
-            x0 + halfwidth, y0 + halfwidth,
-            fill = '#F00'
-        )
-
-root.mainloop()
+    root_canvas = Canvas(root)
+    root_canvas.pack(expand=Y, fill=BOTH)
+    root_canvas.configure(bg='white')
+    
+    nn_vis = NetworkVis(layer_structure)
+    nn_vis.draw(root_canvas, NODE_DISPLAY_SIZE/2, NODE_DISPLAY_SIZE/2)
+    
+    root.mainloop()
+    
+create_visualization(LAYERS)
