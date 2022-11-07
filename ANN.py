@@ -1,6 +1,7 @@
 ##########################
 #Creates, trains, and tests an Artificial neural network with variable amount of layers, and neurons per layer
 ##########################
+from tkinter import *
 from distutils.log import error
 import math
 from random import seed
@@ -11,10 +12,23 @@ import xdrlib
 #SEED AT 29: working
 seed(29)
 
+NODE_DISPLAY_SIZE = 40
+NODE_DISPLAY_XPAD = 40
+NODE_DISPLAY_YPAD = 20
+NODE_DISPLAY_HEIGHT = NODE_DISPLAY_SIZE+NODE_DISPLAY_YPAD
+
 #Global variable to tell vis.py to show updates!
 updateVisNodeValues = False
 caseNum = 0
 updateVisWeights = False
+
+# From: https://stackoverflow.com/a/65983607
+def rgbtohex(r,g,b):
+    return f'#{r:02x}{g:02x}{b:02x}'
+
+EST_MAX = 1.2
+def min_max_normalize(x):
+    return (x-(-EST_MAX))/(EST_MAX-(-EST_MAX))
 
 class NeuralNet:
     def __init__(self, layerAmount, layers, dataset = []):
@@ -22,6 +36,14 @@ class NeuralNet:
         self.layers = layers
         self.dataset = dataset
         self.errors = [] #errors which will be input to cost function
+        self.weights_linear = []
+        
+        # Display variables
+        self.max_layer_size = 0
+        for l in self.layers:
+            self.max_layer_size = max(self.max_layer_size, l.neuronAmount)
+        self.max_height = self.max_layer_size*NODE_DISPLAY_HEIGHT
+        self.max_height = self.max_layer_size*NODE_DISPLAY_HEIGHT
     def createLayers(self):
         for x in range(self.layerAmount):
             
@@ -82,8 +104,6 @@ class NeuralNet:
                         relative_error = output-real[outputNeuron]
                         self.layers[layerInd].neurons[outputNeuron].error = relative_error
                         total_error+=self.layers[layerInd].neurons[outputNeuron].error
-
-                    
         outputs = []
         
         for neuron in self.layers[len(self.layers)-1].neurons:
@@ -169,7 +189,23 @@ class NeuralNet:
             callAmount+=1
         return self
 
-            
+    def draw(self, parent, x, y):
+        # Draws first layer
+        w_index = 0
+        y0 = y + 1/2 * (self.max_layer_size - len(self.layers[0].neurons)) * NODE_DISPLAY_HEIGHT
+        previous_node_centers = self.layers[0].draw(parent, x, y0, [], self.weights_linear)
+        
+        # Draws the rest
+        for i, layer in enumerate(self.layers[1:], start = 1):
+            x0 = x+i*NODE_DISPLAY_HEIGHT
+            y0 = y + 1/2 * (self.max_layer_size - len(layer.neurons)) * NODE_DISPLAY_HEIGHT
+            previous_node_centers = layer.draw(parent,
+                                       x0,
+                                       y0,
+                                       previous_node_centers,
+                                       self.weights_linear
+                                   )
+            print(previous_node_centers)
 
     def __str__(self):
         return f"{self.layerAmount}, {self.layers}"
@@ -192,6 +228,33 @@ class layer:
             else:
                 self.neurons[x].error = 0
                 self.neurons[x].errorSignals = [0]
+                  
+    def draw(self, parent, x, y, previous_node_centers, weights):
+
+        current_node_centers = []
+        for i, node in enumerate(self.neurons):
+            x0 = x
+            y0 = y + i*NODE_DISPLAY_HEIGHT
+            
+            node.draw(parent, 
+                          x0,
+                          y0,
+                          NODE_DISPLAY_SIZE/2
+                      )
+            
+            current_node_centers.append((x0, y0))
+            
+            # Draw the connecting lines between layers
+            for i, prev in enumerate(previous_node_centers):
+                for neuron in self.neurons: #WIP
+                    
+                    for weight in neuron.weights:
+                        
+                        color = rgbtohex(r = round((1-min_max_normalize(weight))*255), g = 0, b = 0)
+                        parent.create_line(prev[0], prev[1], x0, y0, 
+                                       fill=color)
+        
+        return current_node_centers
 
     def __str__(self):
         return f"LAYER:{self.neuronAmount}, {self.type}"
@@ -204,8 +267,83 @@ class neuron:
         self.givingTo = givingTo
         self.receivingFrom = receivingFrom
         self.errorSignals = []
+    
+    def draw(self, parent, x, y, halfwidth):
+        parent.create_oval(
+                x - halfwidth, y - halfwidth,
+                x + halfwidth, y + halfwidth,
+                fill = 'white'
+            )
+        
     def __str__(self):
          return f"NEURON: {self.weights}, {self.givingTo}, {self.receivingFrom}"
+
+
+def create_visualization():
+    root = Tk()
+    root.geometry('500x500')
+    
+    root_canvas = Canvas(root)
+    root_canvas.pack(expand=Y, fill=BOTH)
+    root_canvas.configure(bg='white')
+    
+    net.draw(root_canvas, NODE_DISPLAY_SIZE, NODE_DISPLAY_SIZE)
+    
+    root.mainloop()
+     
+input_layer = layer(2, "input")
+hidden_layer1 = layer(2, "hidden")
+hidden_layer2 = layer(2, "hidden")
+output_layer = layer(1, "output")
+layer_structure = [input_layer, output_layer]
+net = NeuralNet(len(layer_structure), layer_structure, [[[1, 0],[0]],[[0, 1],[0]],[[1, 1],[1]],[[0, 0],[0]]])
+net.createLayers()
+# net.train(net.dataset, 0.2, 1200)
+create_visualization() #DEBUG #TEMP
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #To be implemeneted in vis.py
 # input_layer = layer(2, "input")
