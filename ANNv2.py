@@ -43,8 +43,6 @@ class NeuralNet:
         for i in range(len(desired)):
             self.layers[-1].neurons[i].compute_error(desired[i])
             
-        for 
-            
     def get_output(self,):
         output = []
         for neuron in self.layers[-1].neurons:
@@ -63,8 +61,6 @@ class Layer:
     def feedforward(self, previous_layer):
         for neuron in self.neurons:
             neuron.compute(previous_layer.neurons)
-
-    # def compute_errors(self, ???) #WIP
 
     def __str__(self):
         return f"LAYER:{self.neuronAmount}"
