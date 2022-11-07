@@ -247,12 +247,19 @@ class layer:
             # Draw the connecting lines between layers
             for i, prev in enumerate(previous_node_centers):
                 for neuron in self.neurons: #WIP
-                    
-                    for weight in neuron.weights:
-                        
-                        color = rgbtohex(r = round((1-min_max_normalize(weight))*255), g = 0, b = 0)
-                        parent.create_line(prev[0], prev[1], x0, y0, 
-                                       fill=color)
+                    if self.type == "output":
+                        for receivingFromNeuron in neuron.receivingFrom.neurons:
+                            for weight in receivingFromNeuron.weights:
+                                print(weight)
+                                color = rgbtohex(r = round((1-min_max_normalize(weight))*255), g = 0, b = 0)
+                                parent.create_line(prev[0], prev[1], x0, y0, 
+                                            fill=color)
+                    else:
+                        for weight in neuron.weights:
+                            
+                            color = rgbtohex(r = round((1-min_max_normalize(weight))*255), g = 0, b = 0)
+                            parent.create_line(prev[0], prev[1], x0, y0, 
+                                        fill=color)
         
         return current_node_centers
 
@@ -292,10 +299,9 @@ def create_visualization():
     root.mainloop()
      
 input_layer = layer(2, "input")
-hidden_layer1 = layer(2, "hidden")
-hidden_layer2 = layer(2, "hidden")
+hidden_layer1 = layer(1, "hidden")
 output_layer = layer(1, "output")
-layer_structure = [input_layer, output_layer]
+layer_structure = [input_layer, hidden_layer1, output_layer]
 net = NeuralNet(len(layer_structure), layer_structure, [[[1, 0],[0]],[[0, 1],[0]],[[1, 1],[1]],[[0, 0],[0]]])
 net.createLayers()
 # net.train(net.dataset, 0.2, 1200)
