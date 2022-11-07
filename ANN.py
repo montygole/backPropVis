@@ -11,6 +11,11 @@ import xdrlib
 #SEED AT 29: working
 seed(29)
 
+#Global variable to tell vis.py to show updates!
+updateVisNodeValues = False
+caseNum = 0
+updateVisWeights = False
+
 class NeuralNet:
     def __init__(self, layerAmount, layers, dataset = []):
         self.layerAmount = layerAmount
@@ -157,7 +162,6 @@ class NeuralNet:
         while abs(error) > 0.4: 
             if callAmount > callthreshold:
                 break
-            
             error = 1
             for case in cases:
                 error += self.forwardPass(case[0], case[1])
@@ -183,7 +187,7 @@ class layer:
             self.neurons[x]=neuron([], 1, next_layer, previous_layer)
             if self.type != "output":
                 r = random.uniform(0.5, 1) #Random number between (x, y)
-                self.neurons[x].weights = [r]*next_layer.neuronAmount #Sets rnadom weight for each neuron in next layer
+                self.neurons[x].weights = [r]*next_layer.neuronAmount #Sets random weight for each neuron in next layer
                 self.neurons[x].errorSignals = [0]*next_layer.neuronAmount
             else:
                 self.neurons[x].error = 0
@@ -203,26 +207,26 @@ class neuron:
     def __str__(self):
          return f"NEURON: {self.weights}, {self.givingTo}, {self.receivingFrom}"
 
-
-input_layer = layer(2, "input")
-hidden_layer1 = layer(8, "hidden")
-output_layer = layer(1, "output")
-net = NeuralNet(2, [input_layer,output_layer], [[[1, 0],[0]],[[0, 1],[0]],[[1, 1],[1]],[[0, 0],[0]]])
-net.createLayers()
-net.train(net.dataset, 0.2, 1200)
+#To be implemeneted in vis.py
+# input_layer = layer(2, "input")
+# hidden_layer1 = layer(8, "hidden")
+# output_layer = layer(1, "output")
+# net = NeuralNet(2, [input_layer,output_layer], [[[1, 0],[0]],[[0, 1],[0]],[[1, 1],[1]],[[0, 0],[0]]])
+# net.createLayers()
+# net.train(net.dataset, 0.2, 1200)
 
 #CODE BELOW IS FOR MY OWN TESTING OF THE ANN
-x_data = list(range(len(net.errors)))
+# x_data = list(range(len(net.errors)))
 
-from matplotlib import pyplot as plt
-plt.scatter(x_data, net.errors)
-plt.show()
-results = []
+# from matplotlib import pyplot as plt
+# plt.scatter(x_data, net.errors)
+# plt.show()
+# results = []
 
-net.forwardPass([0, 0], [0], results)
-net.forwardPass([1, 0], [0], results)
-net.forwardPass([1, 1], [1], results)
-net.forwardPass([0, 1], [0], results)
+# net.forwardPass([0, 0], [0], results)
+# net.forwardPass([1, 0], [0], results)
+# net.forwardPass([1, 1], [1], results)
+# net.forwardPass([0, 1], [0], results)
 
-for result in results:
-    print(result)
+# for result in results:
+#     print(result)
