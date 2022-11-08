@@ -6,6 +6,8 @@ from distutils.log import error
 import math
 from random import seed
 import random
+from matplotlib import pyplot as plt
+
 import re
 import xdrlib
 #Set Seed for random()
@@ -194,6 +196,14 @@ class NeuralNet:
         self.prevError += self.forwardPass(case[0], case[1])
         self.backprop(rate)
         self.casesNum +=1
+        #Plot errors for each case from error formula (0.5*(sum(error)))
+        x_data = list(range(len(net.errors)))
+        plt.scatter(x_data, net.errors)
+        plt.title("Error per case")
+        plt.xlabel("Epoch")
+        plt.ylabel("Error (0.5 * (error-desired)^2)")
+        plt.pause(0.00000000000000005)
+        
         return self
 
     def draw(self, parent, x, y):
