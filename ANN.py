@@ -9,10 +9,12 @@ import random
 from matplotlib import pyplot as plt
 import re
 import xdrlib
-#Set Seed for random()
-#SEED AT 29: working
-seed(29)
 
+#Set Seed for random()
+seed(29)
+TRAINING_RATE = 2
+
+# Display variables
 WINDOW_WIDTH = 500
 WINDOW_HEIGHT = 500
 NODE_DISPLAY_SIZE = 40
@@ -23,15 +25,10 @@ LINE_YOFFSET = 5
 LINE_WIDTH_WEIGHT = 5
 LINE_WIDTH_ERRORSIG = 5
 
-TRAINING_RATE = 2
-
-updateVisNodeValues = False
-caseNum = 0
-updateVisWeights = False
-
 #Global vars for running once per case
+caseNum = 0
 
-
+# Converts 0-255 to a hex value
 # From: https://stackoverflow.com/a/65983607
 def rgbtohex(r,g,b):
     return f'#{r:02x}{g:02x}{b:02x}'
@@ -44,7 +41,6 @@ class NeuralNet:
         self.errors = [] #errors which will be input to cost function
         self.weights_linear = []
         
-
         #training control vars
         self.casesNum = 0
         self.prevError = 0
@@ -204,12 +200,13 @@ class NeuralNet:
         plt.pause(0.00000000000000005)
         return self
 
+    # Draw the network
     def draw(self, parent, x, y):
-        # Draws first layer
+        # Draw the first layer
         y0 = y + 1/2 * (self.max_layer_size - len(self.layers[0].neurons)) * NODE_DISPLAY_HEIGHT
         previous_node_centers = self.layers[0].draw(parent, x, y0, [])
         
-        # Draws the rest
+        # Draw the following layers
         for i, layer in enumerate(self.layers[1:], start = 1):
             x0 = x+i*NODE_DISPLAY_XPAD
             y0 = y + 1/2 * (self.max_layer_size - len(layer.neurons)) * NODE_DISPLAY_HEIGHT
@@ -219,7 +216,8 @@ class NeuralNet:
                                        previous_node_centers
                                    )
 
-    def train_and_draw(self): #WIP
+    # Train the network on one instance and draw the network
+    def train_and_draw(self):
         self.train(self.dataset, TRAINING_RATE)
         self.canvas.create_rectangle(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, fill='white')
         self.draw(self.canvas, 70, 50)
@@ -227,6 +225,7 @@ class NeuralNet:
 
     def __str__(self):
         return f"{self.layerAmount}, {self.layers}"
+    
 class layer:
     def __init__(self, neuronAmount, type=""):
         self.neurons = []
@@ -250,9 +249,10 @@ class layer:
                 self.neurons[x].error = 0
                 self.neurons[x].errorSignals = [0]
                   
+    # Draw this layer
     def draw(self, parent, x, y, previous_node_centers):
-
-        current_node_centers = []
+        
+        current_node_centers = [] # retain the current layer's node's positions
         for i, neuron in enumerate(self.neurons):
             x0 = x
             y0 = y + i*NODE_DISPLAY_HEIGHT
@@ -266,12 +266,12 @@ class layer:
             current_node_centers.append((x0, y0))
             
             if self.type != "input":
+                # For each neuron's incoming connections
                 for j, receivingFromNeuron in enumerate(neuron.receivingFrom.neurons):
                     prev = previous_node_centers[-j]
 
                     weight = receivingFromNeuron.weights[i]
-                    weight_255 =max(min(255, round(128*weight + 128)), 0)
-                    print(weight_255)
+                    weight_255 =max(min(255, round(128*abs(weight) + 128)), 0)
                     color = rgbtohex(r = weight_255, g = weight_255, b = weight_255)
                     
                     parent.create_line(prev[0], prev[1], x0, y0, 
@@ -281,11 +281,11 @@ class layer:
                             x0-NODE_DISPLAY_SIZE+50, y0-50*j+30,
                             text = f'w: {weight:.4f}'
                         )
-                        
+                    
+                    # Draw each error signal
                     for errorSig in neuron.errorSignals:
                         errorColours=128-math.ceil(128*(errorSig))
                         color = rgbtohex(r = 255-errorColours, g = errorColours, b = 0)
-                        #print(color, " ", errorSig, "ErrorSigColours", errorColours)
                         parent.create_line(prev[0], prev[1]+LINE_YOFFSET, x0, y0+LINE_YOFFSET, 
                                        fill=color, width=LINE_WIDTH_ERRORSIG)
         
@@ -293,6 +293,7 @@ class layer:
 
     def __str__(self):
         return f"LAYER:{self.neuronAmount}, {self.type}"
+    
 class neuron:
     def __init__(self, weights, bias, givingTo, receivingFrom):
         self.weights = weights
@@ -303,6 +304,7 @@ class neuron:
         self.receivingFrom = receivingFrom
         self.errorSignals = []
     
+    # Draw this neuron as a circle
     def draw(self, parent, x, y, halfwidth):
         parent.create_oval(
                 x - halfwidth, y - halfwidth,
@@ -323,85 +325,19 @@ def create_visualization():
     root_canvas.configure(bg='white')
     
     net.canvas = root_canvas
-    
-    #net.draw(root_canvas, NODE_DISPLAY_SIZE, NODE_DISPLAY_SIZE)
-    
     net.train_and_draw()
     
     root.mainloop()
-     
+
+# Setup some example layers
 input_layer = layer(2, "input")
 hidden_layer1 = layer(3, "hidden")
 output_layer = layer(1, "output")
 layer_structure = [input_layer, hidden_layer1, output_layer]
+
+# Initialize the network
 net = NeuralNet(len(layer_structure), layer_structure, [[[1, 0],[1]],[[0, 1],[1]],[[1, 1],[0]],[[0, 0],[0]]])
 net.createLayers()
-create_visualization() #DEBUG #TEMP
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#To be implemeneted in vis.py
-# input_layer = layer(2, "input")
-# hidden_layer1 = layer(8, "hidden")
-# output_layer = layer(1, "output")
-# net = NeuralNet(2, [input_layer,output_layer], [[[1, 0],[0]],[[0, 1],[0]],[[1, 1],[1]],[[0, 0],[0]]])
-# net.createLayers()
-# net.train(net.dataset, 0.2, 1200)
-
-#CODE BELOW IS FOR MY OWN TESTING OF THE ANN
-# x_data = list(range(len(net.errors)))
-
-# from matplotlib import pyplot as plt
-# plt.scatter(x_data, net.errors)
-# plt.show()
-# results = []
-
-# net.forwardPass([0, 0], [0], results)
-# net.forwardPass([1, 0], [0], results)
-# net.forwardPass([1, 1], [1], results)
-# net.forwardPass([0, 1], [0], results)
-
-# for result in results:
-#     #print(result)
+# Run the visualization
+create_visualization()
