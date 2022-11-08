@@ -29,7 +29,7 @@ updateVisWeights = False
 def rgbtohex(r,g,b):
     return f'#{r:02x}{g:02x}{b:02x}'
 
-EST_MAX = 1.2
+EST_MAX = 1.0
 def min_max_normalize(x):
     return (x-(-EST_MAX))/(EST_MAX-(-EST_MAX))
 
@@ -82,11 +82,11 @@ class NeuralNet:
         for layerInd in range(self.layerAmount):
             #Going into each layer
             neuronNum=0
-            print("AT LAYER: ", layerInd, " which is of type: ", self.layers[layerInd].type, "and has a neuron amount of", self.layers[layerInd].neuronAmount)
+            #print("AT LAYER: ", layerInd, " which is of type: ", self.layers[layerInd].type, "and has a neuron amount of", self.layers[layerInd].neuronAmount)
             if self.layers[layerInd].type=="input": #Set input neurons to inputs for case
                 for n in range(len(self.layers[layerInd].neurons)):
                     self.layers[layerInd].neurons[n].value = inputs[n]
-                    print("Neuron #:", n, " of layer type ", self.layers[layerInd].type, " is of value ", self.layers[layerInd].neurons[n].value)
+                    #print("Neuron #:", n, " of layer type ", self.layers[layerInd].type, " is of value ", self.layers[layerInd].neurons[n].value)
             else: 
                 #FOr each neuron which isn't in the input lyer, 
                 #aggregte sums of previous neurons mulied by their respective wieghts
@@ -96,13 +96,13 @@ class NeuralNet:
                     sum = 0
                     prevNeuronNum = 0
                     for previous_neuron in neuron.receivingFrom.neurons:
-                        print("WEIGHTS OF PREVIOUS NEURON #" , prevNeuronNum, " ARE: ", previous_neuron.weights)
+                        #print("WEIGHTS OF PREVIOUS NEURON #" , prevNeuronNum, " ARE: ", previous_neuron.weights)
                         sum = sum + previous_neuron.value*previous_neuron.weights[neuronNum]
                         prevNeuronNum += 1
                     neuron.input = sum
-                    print("The input to the sigmoid is:",sum)
+                    #print("The input to the sigmoid is:",sum)
                     neuron.value = self.sigmoid(sum)
-                    print("Neuron #:", neuronNum, " of layer type ", self.layers[layerInd].type, " is of value ", neuron.value)
+                    #print("Neuron #:", neuronNum, " of layer type ", self.layers[layerInd].type, " is of value ", neuron.value)
                     neuronNum+=1
                     
                 if self.layers[layerInd].type=="output": #aggregate outputs
@@ -129,41 +129,41 @@ class NeuralNet:
 
         for layer in reversed(self.layers):
             if layer.type=="output":
-                print("THE ERROR SIGNAL OF NEURONS ON LAYER: OUTPUT ARE")   
+                #print("THE ERROR SIGNAL OF NEURONS ON LAYER: OUTPUT ARE")   
                 for neuron in layer.neurons:
                     neuron.errorSignals[0] = -1*neuron.error
-                    print(neuron.errorSignals)
+                    #print(neuron.errorSignals)
                 
             elif layer.type=="hidden":
-                print("THE ERROR SIGNAL OF NEURONS ON LAYER:", layer.type, "ARE")
+                #print("THE ERROR SIGNAL OF NEURONS ON LAYER:", layer.type, "ARE")
                 
                 for neuron in range(len(layer.neurons)):
                     x=self.derivativeSigmoid(layer.neurons[neuron].input) #X stores derivative of sigmoid function wrt previous input to neuron
                     for weight in range(len(layer.neurons[neuron].weights)):
                         errorSig = 0
                         w = layer.neurons[neuron].weights[weight]
-                        print(w)
+                        #print(w)
                         for signal in layerToRight.neurons[weight].errorSignals:
                             errorSig+=w*signal
-                            print("WEIGHT*PREVIOUS ERROR IS:",w*signal)
+                            #print("WEIGHT*PREVIOUS ERROR IS:",w*signal)
                         layer.neurons[neuron].errorSignals[weight]=(x*errorSig)
             elif layer.type=="input":
-                print("THE ERROR SIGNAL OF NEURONS ON LAYER:", layer.type, "ARE")
+                #print("THE ERROR SIGNAL OF NEURONS ON LAYER:", layer.type, "ARE")
                 
                 for neuron in range(len(layer.neurons)):
 
-                    print("INPUT X/VALUE IS:", layer.neurons[neuron].value)
+                    #print("INPUT X/VALUE IS:", layer.neurons[neuron].value)
                     x=self.derivativeSigmoid(layer.neurons[neuron].value)
                     for weight in range(len(layer.neurons[neuron].weights)):
                         errorSig = 0
                         w = layer.neurons[neuron].weights[weight]
-                        print(w)
+                        #print(w)
                         for signal in layerToRight.neurons[weight].errorSignals:
-                            #print(signal)
+                            ##print(signal)
                             errorSig+=w*signal
-                            print("WEIGHT*PREVIOUS ERROR IS:",w*signal)
+                            #print("WEIGHT*PREVIOUS ERROR IS:",w*signal)
                         layer.neurons[neuron].errorSignals[weight]= (x*errorSig)
-                        print("AT WEIGHT", layer.neurons[neuron].weights[weight], "THE ERRORSIG IS", (x*errorSig))
+                        #print("AT WEIGHT", layer.neurons[neuron].weights[weight], "THE ERRORSIG IS", (x*errorSig))
                         
             
             layerToRight=layer
@@ -172,13 +172,13 @@ class NeuralNet:
         #Performs backrpopagation
         #Changes each weight based on its gradient relative to the error
         #Retruns
-        print("BEGGINING BACKPROPAGATION \n *****************")
+        #print("BEGGINING BACKPROPAGATION \n *****************")
         self.storeErrorSignal()
         for layer in reversed(self.layers):
             if layer.type != "output":
                 for neuron in layer.neurons:
                     for weight in range(len(neuron.weights)):
-                        print("GRADIENT:", rate*neuron.givingTo.neurons[weight].value*neuron.errorSignals[weight])
+                        #print("GRADIENT:", rate*neuron.givingTo.neurons[weight].value*neuron.errorSignals[weight])
                         neuron.weights[weight]+= rate*neuron.givingTo.neurons[weight].value*neuron.errorSignals[weight]
 
     
@@ -188,7 +188,7 @@ class NeuralNet:
         if self.casesNum == len(cases):
             self.casesNum = 0
         case = cases[self.casesNum]
-        print("*@$!@*$!*@$*!@*$!*@$", case)
+        #print("*@$!@*$!*@$*!@*$!*@$", case)
         self.prevError += self.forwardPass(case[0], case[1])
         self.backprop(rate)
         self.casesNum +=1
@@ -210,7 +210,12 @@ class NeuralNet:
                                        previous_node_centers,
                                        self.weights_linear
                                    )
-            print(previous_node_centers)
+            #print(previous_node_centers)
+
+    def train_and_draw(self): #WIP
+        self.train(self.dataset, 0.2)
+        self.draw(self.canvas, 0, 0)
+        self.canvas.after(100, func=self.train_and_draw)
 
     def __str__(self):
         return f"{self.layerAmount}, {self.layers}"
@@ -252,17 +257,19 @@ class layer:
             # Draw the connecting lines between layers
             for i, prev in enumerate(previous_node_centers):
                 for neuron in self.neurons: #WIP
-                    print(len(self.neurons))
+                    #print(len(self.neurons))
                     if self.type == "output":
+                        print("===")
                         for receivingFromNeuron in neuron.receivingFrom.neurons:
                             for weight in receivingFromNeuron.weights:
-                                color = rgbtohex(r = round((1-min_max_normalize(weight))*5), g = 100, b = 110)
+                                color = rgbtohex(r = round((min_max_normalize(weight))*255), g = 100, b = 110)
+                                print(color, " ", weight)
                                 parent.create_line(prev[0], prev[1], x0, y0, 
                                             fill=color)
                     else:
                         for weight in neuron.weights:
                             
-                            color = rgbtohex(r = round((1-min_max_normalize(weight))*25), g = 0, b = 0)
+                            color = rgbtohex(r = round((min_max_normalize(weight))*255), g = 0, b = 0)
                             parent.create_line(prev[0], prev[1], x0, y0, 
                                         fill=color)
         
@@ -290,7 +297,6 @@ class neuron:
     def __str__(self):
          return f"NEURON: {self.weights}, {self.givingTo}, {self.receivingFrom}"
 
-
 def create_visualization():
     root = Tk()
     root.geometry('500x500')
@@ -299,7 +305,11 @@ def create_visualization():
     root_canvas.pack(expand=Y, fill=BOTH)
     root_canvas.configure(bg='white')
     
-    net.draw(root_canvas, NODE_DISPLAY_SIZE, NODE_DISPLAY_SIZE)
+    net.canvas = root_canvas
+    
+    #net.draw(root_canvas, NODE_DISPLAY_SIZE, NODE_DISPLAY_SIZE)
+    
+    net.train_and_draw()
     
     root.mainloop()
      
@@ -309,9 +319,6 @@ output_layer = layer(1, "output")
 layer_structure = [input_layer, hidden_layer1, output_layer]
 net = NeuralNet(len(layer_structure), layer_structure, [[[1, 0],[0]],[[0, 1],[0]],[[1, 1],[1]],[[0, 0],[0]]])
 net.createLayers()
-net.train(net.dataset, 0.2)
-net.train(net.dataset, 0.2)
-net.train(net.dataset, 0.2)
 create_visualization() #DEBUG #TEMP
 
 
@@ -380,4 +387,4 @@ create_visualization() #DEBUG #TEMP
 # net.forwardPass([0, 1], [0], results)
 
 # for result in results:
-#     print(result)
+#     #print(result)
