@@ -1,14 +1,12 @@
 ##########################
-#Creates, trains, and tests an Artificial neural network with variable amount of layers, and neurons per layer
+#Creates, and trains an Artificial neural network with variable amount of layers, and neurons per layer
+#Also visualizes the backpropagation process with Tkinter, and matplotlib
 ##########################
 from tkinter import *
-from distutils.log import error
 import math
 from random import seed
 import random
 from matplotlib import pyplot as plt
-import re
-import xdrlib
 
 #Set Seed for random()
 seed(29)
@@ -53,13 +51,13 @@ class NeuralNet:
     def createLayers(self):
         for x in range(self.layerAmount):
             
-            if x==0: #if input layer
+            if x==0: #if input layer only give its neurons a next_layer
                 self.layers[x].createNeurons(self.layers[x+1], None)
             
-            elif x==self.layerAmount-1: #if output layer
+            elif x==self.layerAmount-1: #if output layer only give its neruons a previous_layer
                 self.layers[x].createNeurons(None, self.layers[x-1])
             
-            else: #if hidden layer
+            else: #if hidden layer give both a next_layer, and a previous_layer
                 self.layers[x].createNeurons(self.layers[x+1], self.layers[x-1])
 
     def sigmoid(self, x):
@@ -95,13 +93,10 @@ class NeuralNet:
                     sum = 0
                     prevNeuronNum = 0
                     for previous_neuron in neuron.receivingFrom.neurons:
-                        #print("WEIGHTS OF PREVIOUS NEURON #" , prevNeuronNum, " ARE: ", previous_neuron.weights)
                         sum = sum + previous_neuron.value*previous_neuron.weights[neuronNum]
                         prevNeuronNum += 1
                     neuron.input = sum
-                    #print("The input to the sigmoid is:",sum)
                     neuron.value = self.sigmoid(sum)
-                    #print("Neuron #:", neuronNum, " of layer type ", self.layers[layerInd].type, " is of value ", neuron.value)
                     neuronNum+=1
                     
                 if self.layers[layerInd].type=="output": #aggregate outputs
@@ -128,80 +123,69 @@ class NeuralNet:
 
         for layer in reversed(self.layers):
             if layer.type=="output":
-                #print("THE ERROR SIGNAL OF NEURONS ON LAYER: OUTPUT ARE")   
                 for neuron in layer.neurons:
                     neuron.errorSignals[0] = -1*neuron.error
-                    #print(neuron.errorSignals)
                 
             elif layer.type=="hidden":
-                #print("THE ERROR SIGNAL OF NEURONS ON LAYER:", layer.type, "ARE")
                 
                 for neuron in range(len(layer.neurons)):
                     x=self.derivativeSigmoid(layer.neurons[neuron].input) #X stores derivative of sigmoid function wrt previous input to neuron
                     for weight in range(len(layer.neurons[neuron].weights)):
                         errorSig = 0
-                        w = layer.neurons[neuron].weights[weight]
-                        #print(w)
+                        w = layer.neurons[neuron].weights[weight] #w stands for weight
                         for signal in layerToRight.neurons[weight].errorSignals:
                             errorSig+=w*signal
-                            #print("WEIGHT*PREVIOUS ERROR IS:",w*signal)
                         layer.neurons[neuron].errorSignals[weight]=(x*errorSig)
-            elif layer.type=="input":
-                #print("THE ERROR SIGNAL OF NEURONS ON LAYER:", layer.type, "ARE")
-                
-                for neuron in range(len(layer.neurons)):
 
-                    #print("INPUT X/VALUE IS:", layer.neurons[neuron].value)
+            elif layer.type=="input":
+                for neuron in range(len(layer.neurons)):
                     x=self.derivativeSigmoid(layer.neurons[neuron].value)
                     for weight in range(len(layer.neurons[neuron].weights)):
                         errorSig = 0
                         w = layer.neurons[neuron].weights[weight]
-                        #print(w)
                         for signal in layerToRight.neurons[weight].errorSignals:
-                            ##print(signal)
                             errorSig+=w*signal
-                            #print("WEIGHT*PREVIOUS ERROR IS:",w*signal)
                         layer.neurons[neuron].errorSignals[weight]= (x*errorSig)
-                        #print("AT WEIGHT", layer.neurons[neuron].weights[weight], "THE ERRORSIG IS", (x*errorSig))
                         
             
             layerToRight=layer
     
     def backprop(self, rate): 
         #Performs backrpopagation
-        #Changes each weight based on its gradient relative to the error
-        #Retruns
-        #print("BEGGINING BACKPROPAGATION \n *****************")
+        #Changes each weight based on its gradient wrt to the error
+        #Returns nothing
+
         self.storeErrorSignal()
         for layer in reversed(self.layers):
             if layer.type != "output":
                 for neuron in layer.neurons:
                     for weight in range(len(neuron.weights)):
-                        #print("GRADIENT:", rate*neuron.givingTo.neurons[weight].value*neuron.errorSignals[weight])
                         neuron.weights[weight]+= rate*neuron.givingTo.neurons[weight].value*neuron.errorSignals[weight]
 
     
     def train(self, cases, rate):
-        #Commits forward pass, then backpropogation. Stops at call threshold or error threshold
+        #Commits forward pass, then backpropogation
         #Returns a trained neural network object
         if self.casesNum == len(cases):
             self.casesNum = 0
         case = cases[self.casesNum]
-        #print("*@$!@*$!*@$*!@*$!*@$", case)
         self.prevError += self.forwardPass(case[0], case[1])
         self.backprop(rate)
         self.casesNum +=1
+
         #Plot errors for each case from error formula (0.5*(sum(error)))
         x_data = list(range(len(net.errors)))
         plt.scatter(x_data, net.errors)
         plt.title("Error per case")
         plt.xlabel("Epoch")
         plt.ylabel("Error (0.5 * (error-desired)^2)")
-        plt.pause(0.00000000000000005)
+        plt.pause(0.00000000000000005)  #How long of a pause in between updates so the user can click the window? This should be near 0 for our purposes
         return self
 
     # Draw the network
     def draw(self, parent, x, y):
+        #This function draws layers of the network
+
         # Draw the first layer
         y0 = y + 1/2 * (self.max_layer_size - len(self.layers[0].neurons)) * NODE_DISPLAY_HEIGHT
         previous_node_centers = self.layers[0].draw(parent, x, y0, [])
@@ -234,7 +218,7 @@ class layer:
         self.neuronAmount = neuronAmount
     def createNeurons(self, next_layer, previous_layer):
         #Create new neuron object based on layer's neuron amount.
-        #Sets weights, and gives signs of position in network to neurons
+        #Sets weights, and gives signs of position in network to neurons via next_layer and previous_layer
         self.neurons = [0]*self.neuronAmount
         for x in range(self.neuronAmount): 
             self.neurons[x]=neuron([], 1, next_layer, previous_layer)
