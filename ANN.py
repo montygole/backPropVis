@@ -1,5 +1,6 @@
 ##########################
-#Creates, trains, and tests an Artificial neural network with variable amount of layers, and neurons per layer
+#Creates, and trains an Artificial neural network with variable amount of layers, and neurons per layer
+#Also visualizes the backpropagation process with Tkinter, and matplotlib
 ##########################
 from tkinter import *
 from distutils.log import error
@@ -7,35 +8,31 @@ import math
 from random import seed
 import random
 from matplotlib import pyplot as plt
-
 import re
 import xdrlib
+
 #Set Seed for random()
-#SEED AT 29: working
 seed(29)
+TRAINING_RATE = 2
 
+# Display variables
+WINDOW_WIDTH = 500
+WINDOW_HEIGHT = 500
 NODE_DISPLAY_SIZE = 40
-NODE_DISPLAY_XPAD = NODE_DISPLAY_SIZE * 3
-NODE_DISPLAY_YPAD = 20
+NODE_DISPLAY_XPAD = NODE_DISPLAY_SIZE * 4
+NODE_DISPLAY_YPAD = NODE_DISPLAY_SIZE * 2
 NODE_DISPLAY_HEIGHT = NODE_DISPLAY_SIZE+NODE_DISPLAY_YPAD
-
-TRAINING_RATE = .8
-
-
-updateVisNodeValues = False
-caseNum = 0
-updateVisWeights = False
+LINE_YOFFSET = 5
+LINE_WIDTH_WEIGHT = 5
+LINE_WIDTH_ERRORSIG = 5
 
 #Global vars for running once per case
+caseNum = 0
 
-
+# Converts 0-255 to a hex value
 # From: https://stackoverflow.com/a/65983607
 def rgbtohex(r,g,b):
     return f'#{r:02x}{g:02x}{b:02x}'
-
-EST_MAX = 1.0
-def min_max_normalize(x):
-    return (x-(-EST_MAX))/(EST_MAX-(-EST_MAX))
 
 class NeuralNet:
     def __init__(self, layerAmount, layers, dataset = []):
@@ -45,7 +42,6 @@ class NeuralNet:
         self.errors = [] #errors which will be input to cost function
         self.weights_linear = []
         
-
         #training control vars
         self.casesNum = 0
         self.prevError = 0
@@ -58,13 +54,13 @@ class NeuralNet:
     def createLayers(self):
         for x in range(self.layerAmount):
             
-            if x==0: #if input layer
+            if x==0: #if input layer only give its neurons a next_layer
                 self.layers[x].createNeurons(self.layers[x+1], None)
             
-            elif x==self.layerAmount-1: #if output layer
+            elif x==self.layerAmount-1: #if output layer only give its neruons a previous_layer
                 self.layers[x].createNeurons(None, self.layers[x-1])
             
-            else: #if hidden layer
+            else: #if hidden layer give both a next_layer, and a previous_layer
                 self.layers[x].createNeurons(self.layers[x+1], self.layers[x-1])
 
     def sigmoid(self, x):
@@ -100,13 +96,10 @@ class NeuralNet:
                     sum = 0
                     prevNeuronNum = 0
                     for previous_neuron in neuron.receivingFrom.neurons:
-                        #print("WEIGHTS OF PREVIOUS NEURON #" , prevNeuronNum, " ARE: ", previous_neuron.weights)
                         sum = sum + previous_neuron.value*previous_neuron.weights[neuronNum]
                         prevNeuronNum += 1
                     neuron.input = sum
-                    #print("The input to the sigmoid is:",sum)
                     neuron.value = self.sigmoid(sum)
-                    #print("Neuron #:", neuronNum, " of layer type ", self.layers[layerInd].type, " is of value ", neuron.value)
                     neuronNum+=1
                     
                 if self.layers[layerInd].type=="output": #aggregate outputs
@@ -133,103 +126,93 @@ class NeuralNet:
 
         for layer in reversed(self.layers):
             if layer.type=="output":
-                #print("THE ERROR SIGNAL OF NEURONS ON LAYER: OUTPUT ARE")   
                 for neuron in layer.neurons:
                     neuron.errorSignals[0] = -1*neuron.error
-                    #print(neuron.errorSignals)
                 
             elif layer.type=="hidden":
-                #print("THE ERROR SIGNAL OF NEURONS ON LAYER:", layer.type, "ARE")
                 
                 for neuron in range(len(layer.neurons)):
                     x=self.derivativeSigmoid(layer.neurons[neuron].input) #X stores derivative of sigmoid function wrt previous input to neuron
                     for weight in range(len(layer.neurons[neuron].weights)):
                         errorSig = 0
-                        w = layer.neurons[neuron].weights[weight]
-                        #print(w)
+                        w = layer.neurons[neuron].weights[weight] #w stands for weight
                         for signal in layerToRight.neurons[weight].errorSignals:
                             errorSig+=w*signal
-                            #print("WEIGHT*PREVIOUS ERROR IS:",w*signal)
                         layer.neurons[neuron].errorSignals[weight]=(x*errorSig)
-            elif layer.type=="input":
-                #print("THE ERROR SIGNAL OF NEURONS ON LAYER:", layer.type, "ARE")
-                
-                for neuron in range(len(layer.neurons)):
 
-                    #print("INPUT X/VALUE IS:", layer.neurons[neuron].value)
+            elif layer.type=="input":
+                for neuron in range(len(layer.neurons)):
                     x=self.derivativeSigmoid(layer.neurons[neuron].value)
                     for weight in range(len(layer.neurons[neuron].weights)):
                         errorSig = 0
                         w = layer.neurons[neuron].weights[weight]
-                        #print(w)
                         for signal in layerToRight.neurons[weight].errorSignals:
-                            ##print(signal)
                             errorSig+=w*signal
-                            #print("WEIGHT*PREVIOUS ERROR IS:",w*signal)
                         layer.neurons[neuron].errorSignals[weight]= (x*errorSig)
-                        #print("AT WEIGHT", layer.neurons[neuron].weights[weight], "THE ERRORSIG IS", (x*errorSig))
                         
             
             layerToRight=layer
     
     def backprop(self, rate): 
         #Performs backrpopagation
-        #Changes each weight based on its gradient relative to the error
-        #Retruns
-        #print("BEGGINING BACKPROPAGATION \n *****************")
+        #Changes each weight based on its gradient wrt to the error
+        #Returns nothing
+
         self.storeErrorSignal()
         for layer in reversed(self.layers):
             if layer.type != "output":
                 for neuron in layer.neurons:
                     for weight in range(len(neuron.weights)):
-                        #print("GRADIENT:", rate*neuron.givingTo.neurons[weight].value*neuron.errorSignals[weight])
                         neuron.weights[weight]+= rate*neuron.givingTo.neurons[weight].value*neuron.errorSignals[weight]
 
     
     def train(self, cases, rate):
-        #Commits forward pass, then backpropogation. Stops at call threshold or error threshold
+        #Commits forward pass, then backpropogation
         #Returns a trained neural network object
         if self.casesNum == len(cases):
             self.casesNum = 0
         case = cases[self.casesNum]
-        #print("*@$!@*$!*@$*!@*$!*@$", case)
         self.prevError += self.forwardPass(case[0], case[1])
         self.backprop(rate)
         self.casesNum +=1
+
         #Plot errors for each case from error formula (0.5*(sum(error)))
         x_data = list(range(len(net.errors)))
         plt.scatter(x_data, net.errors)
         plt.title("Error per case")
         plt.xlabel("Epoch")
         plt.ylabel("Error (0.5 * (error-desired)^2)")
-        plt.pause(0.00000000000000005)
-        
+        plt.pause(0.00000000000000005)  #How long of a pause in between updates so the user can click the window? This should be near 0 for our purposes
         return self
 
+    # Draw the network
     def draw(self, parent, x, y):
-        # Draws first layer
+        #This function draws layers of the network
+
+        # Draw the first layer
         y0 = y + 1/2 * (self.max_layer_size - len(self.layers[0].neurons)) * NODE_DISPLAY_HEIGHT
-        previous_node_centers = self.layers[0].draw(parent, x, y0, [], self.weights_linear)
+        previous_node_centers = self.layers[0].draw(parent, x, y0, [])
         
-        # Draws the rest
+        # Draw the following layers
         for i, layer in enumerate(self.layers[1:], start = 1):
             x0 = x+i*NODE_DISPLAY_XPAD
             y0 = y + 1/2 * (self.max_layer_size - len(layer.neurons)) * NODE_DISPLAY_HEIGHT
             previous_node_centers = layer.draw(parent,
                                        x0,
                                        y0,
-                                       previous_node_centers,
-                                       self.weights_linear
+                                       previous_node_centers
                                    )
-            #print(previous_node_centers)
 
-    def train_and_draw(self): #WIP
+    # Train the network on one instance and draw the network
+    def train_and_draw(self):
         self.train(self.dataset, TRAINING_RATE)
-        self.draw(self.canvas, 50, 50)
+        self.canvas.create_rectangle(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, fill='white')
+        self.draw(self.canvas, 70, 50)
         self.canvas.after(100, func=self.train_and_draw)
 
     def __str__(self):
         return f"{self.layerAmount}, {self.layers}"
+    
 class layer:
     def __init__(self, neuronAmount, type=""):
         self.neurons = []
@@ -238,26 +221,30 @@ class layer:
         self.neuronAmount = neuronAmount
     def createNeurons(self, next_layer, previous_layer):
         #Create new neuron object based on layer's neuron amount.
-        #Sets weights, and gives signs of position in network to neurons
+        #Sets weights, and gives signs of position in network to neurons via next_layer and previous_layer
         self.neurons = [0]*self.neuronAmount
         for x in range(self.neuronAmount): 
             self.neurons[x]=neuron([], 1, next_layer, previous_layer)
             if self.type != "output":
-                r = random.uniform(0.5, 1) #Random number between (x, y)
-                self.neurons[x].weights = [r]*next_layer.neuronAmount #Sets random weight for each neuron in next layer
+                #self.neurons[x].weights = [r]*next_layer.neuronAmount #Sets random weight for each neuron in next layer
+                self.neurons[x].weights = [0]*next_layer.neuronAmount
+                for i in range(next_layer.neuronAmount):
+                    r = random.uniform(-0.5, .5) #Random number between (x, y)
+                    self.neurons[x].weights[i] = r
                 self.neurons[x].errorSignals = [0]*next_layer.neuronAmount
             else:
                 self.neurons[x].error = 0
                 self.neurons[x].errorSignals = [0]
                   
-    def draw(self, parent, x, y, previous_node_centers, weights):
-
-        current_node_centers = []
-        for i, node in enumerate(self.neurons):
+    # Draw this layer
+    def draw(self, parent, x, y, previous_node_centers):
+        
+        current_node_centers = [] # retain the current layer's node's positions
+        for i, neuron in enumerate(self.neurons):
             x0 = x
             y0 = y + i*NODE_DISPLAY_HEIGHT
             
-            node.draw(parent, 
+            neuron.draw(parent, 
                           x0,
                           y0,
                           NODE_DISPLAY_SIZE/2
@@ -265,42 +252,35 @@ class layer:
             
             current_node_centers.append((x0, y0))
             
-            # Draw the connecting lines between layers
-            for i, prev in enumerate(previous_node_centers):
-                for neuron in self.neurons: #WIP
-                    #print(len(self.neurons))
-                    if self.type == "output":
-                        print("===")
-                        for errorSig in neuron.errorSignals:
-                            errorColours=128-math.ceil(128*(errorSig/2))
-                            color = rgbtohex(r = 255, g = errorColours, b = 255)
-                            #print(color, " ", errorSig, "ErrorSigColours", errorColours)
-                            parent.create_line(prev[0], prev[1], x0, y0-4, 
-                                        fill=color, width=2)
-                        for receivingFromNeuron in neuron.receivingFrom.neurons:
-                            for weight in receivingFromNeuron.weights:
-                                weightcolours=255-math.ceil(255*(weight/2))
-                                color = rgbtohex(r = 255, g = 255, b = weightcolours)
-                                #print(color, " ", weight, "WeightCOlours", weightcolours)
-                                parent.create_line(prev[0], prev[1], x0, y0, 
-                                            fill=color, width=2)
-                    else:
-                        for weight in neuron.weights:
-                            weightcolours=255-math.ceil(255*(weight/2))
-                            color = rgbtohex(r = 255, g = 255, b = weightcolours)
-                            parent.create_line(prev[0], prev[1], x0, y0-4, 
-                                        fill=color, width=2)
-                        for errorSig in neuron.errorSignals:
-                            errorColours=128-math.ceil(128*(errorSig/2))
-                            color = rgbtohex(r = 255, g = errorColours, b = 255)
-                            print(color, " ", errorSig, "ErrorSigColours", errorColours)
-                            parent.create_line(prev[0], prev[1], x0, y0, 
-                                        fill=color, width=2)
+            if self.type != "input":
+                # For each neuron's incoming connections
+                for j, receivingFromNeuron in enumerate(neuron.receivingFrom.neurons):
+                    prev = previous_node_centers[-j]
+
+                    weight = receivingFromNeuron.weights[i]
+                    weight_255 =max(min(255, round(128*abs(weight) + 128)), 0)
+                    color = rgbtohex(r = weight_255, g = weight_255, b = weight_255)
+                    
+                    parent.create_line(prev[0], prev[1], x0, y0, 
+                               fill=color, width=LINE_WIDTH_WEIGHT)
+                    
+                    parent.create_text(
+                            x0-NODE_DISPLAY_SIZE+50, y0-50*j+30,
+                            text = f'w: {weight:.4f}'
+                        )
+                    
+                    # Draw each error signal
+                    for errorSig in neuron.errorSignals:
+                        errorColours=128-math.ceil(128*(errorSig))
+                        color = rgbtohex(r = 255-errorColours, g = errorColours, b = 0)
+                        parent.create_line(prev[0], prev[1]+LINE_YOFFSET, x0, y0+LINE_YOFFSET, 
+                                       fill=color, width=LINE_WIDTH_ERRORSIG)
         
         return current_node_centers
 
     def __str__(self):
         return f"LAYER:{self.neuronAmount}, {self.type}"
+    
 class neuron:
     def __init__(self, weights, bias, givingTo, receivingFrom):
         self.weights = weights
@@ -311,6 +291,7 @@ class neuron:
         self.receivingFrom = receivingFrom
         self.errorSignals = []
     
+    # Draw this neuron as a circle
     def draw(self, parent, x, y, halfwidth):
         parent.create_oval(
                 x - halfwidth, y - halfwidth,
@@ -324,91 +305,26 @@ class neuron:
 def create_visualization():
     root = Tk()
     root.geometry('500x500')
+    root.resizable(False, False)
     
     root_canvas = Canvas(root)
     root_canvas.pack(expand=Y, fill=BOTH)
     root_canvas.configure(bg='white')
     
     net.canvas = root_canvas
-    
-    #net.draw(root_canvas, NODE_DISPLAY_SIZE, NODE_DISPLAY_SIZE)
-    
     net.train_and_draw()
     
     root.mainloop()
-     
+
+# Setup some example layers
 input_layer = layer(2, "input")
-hidden_layer1 = layer(1, "hidden")
+hidden_layer1 = layer(3, "hidden")
 output_layer = layer(1, "output")
 layer_structure = [input_layer, hidden_layer1, output_layer]
+
+# Initialize the network
 net = NeuralNet(len(layer_structure), layer_structure, [[[1, 0],[1]],[[0, 1],[1]],[[1, 1],[0]],[[0, 0],[0]]])
 net.createLayers()
-create_visualization() #DEBUG #TEMP
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#To be implemeneted in vis.py
-# input_layer = layer(2, "input")
-# hidden_layer1 = layer(8, "hidden")
-# output_layer = layer(1, "output")
-# net = NeuralNet(2, [input_layer,output_layer], [[[1, 0],[0]],[[0, 1],[0]],[[1, 1],[1]],[[0, 0],[0]]])
-# net.createLayers()
-# net.train(net.dataset, 0.2, 1200)
-
-#CODE BELOW IS FOR MY OWN TESTING OF THE ANN
-# x_data = list(range(len(net.errors)))
-
-# from matplotlib import pyplot as plt
-# plt.scatter(x_data, net.errors)
-# plt.show()
-# results = []
-
-# net.forwardPass([0, 0], [0], results)
-# net.forwardPass([1, 0], [0], results)
-# net.forwardPass([1, 1], [1], results)
-# net.forwardPass([0, 1], [0], results)
-
-# for result in results:
-#     #print(result)
+# Run the visualization
+create_visualization()
