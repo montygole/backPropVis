@@ -5,7 +5,7 @@ Austin Vuong
 ---------------
 DESCRIPTION
 - Backpropagation visualization with python
-- Currently training on AND gate inputs
+- Currently training on AND gate inputs/outputs
 - The grayscale lines represent the values of the weights (black-white)
 - The colored lines represents the error signals (red-green)
 - Graphs the errors of each case via matplotlib
