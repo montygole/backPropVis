@@ -24,4 +24,4 @@ HOW TO
 For Normal Run
   1. Clone repository
   2. Ensure requirements above are met
-  3. Run Python file
+  3. Run ANN.py file
