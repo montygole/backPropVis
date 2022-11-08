@@ -1,6 +1,7 @@
---- Authors ---
-Montgomery Gole
-Austin Vuong
+---------------
+AUTHORS
+- Montgomery Gole
+- Austin Vuong
 
 ---------------
 DESCRIPTION
