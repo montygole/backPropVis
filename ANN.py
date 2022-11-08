@@ -17,10 +17,13 @@ NODE_DISPLAY_XPAD = 40
 NODE_DISPLAY_YPAD = 20
 NODE_DISPLAY_HEIGHT = NODE_DISPLAY_SIZE+NODE_DISPLAY_YPAD
 
-#Global variable to tell vis.py to show updates!
+
 updateVisNodeValues = False
 caseNum = 0
 updateVisWeights = False
+
+#Global vars for running once per case
+
 
 # From: https://stackoverflow.com/a/65983607
 def rgbtohex(r,g,b):
@@ -38,6 +41,10 @@ class NeuralNet:
         self.errors = [] #errors which will be input to cost function
         self.weights_linear = []
         
+
+        #training control vars
+        self.casesNum = 0
+        self.prevError = 0
         # Display variables
         self.max_layer_size = 0
         for l in self.layers:
@@ -174,19 +181,17 @@ class NeuralNet:
                         print("GRADIENT:", rate*neuron.givingTo.neurons[weight].value*neuron.errorSignals[weight])
                         neuron.weights[weight]+= rate*neuron.givingTo.neurons[weight].value*neuron.errorSignals[weight]
 
-    def train(self, cases, rate, callthreshold=100):
+    
+    def train(self, cases, rate):
         #Commits forward pass, then backpropogation. Stops at call threshold or error threshold
         #Returns a trained neural network object
-        callAmount = 0
-        error = 1
-        while abs(error) > 0.4: 
-            if callAmount > callthreshold:
-                break
-            error = 1
-            for case in cases:
-                error += self.forwardPass(case[0], case[1])
-                self.backprop(rate)
-            callAmount+=1
+        if self.casesNum == len(cases):
+            self.casesNum = 0
+        case = cases[self.casesNum]
+        print("*@$!@*$!*@$*!@*$!*@$", case)
+        self.prevError += self.forwardPass(case[0], case[1])
+        self.backprop(rate)
+        self.casesNum +=1
         return self
 
     def draw(self, parent, x, y):
@@ -251,13 +256,13 @@ class layer:
                     if self.type == "output":
                         for receivingFromNeuron in neuron.receivingFrom.neurons:
                             for weight in receivingFromNeuron.weights:
-                                color = rgbtohex(r = round((1-min_max_normalize(weight))*255), g = 0, b = 0)
+                                color = rgbtohex(r = round((1-min_max_normalize(weight))*5), g = 100, b = 110)
                                 parent.create_line(prev[0], prev[1], x0, y0, 
                                             fill=color)
                     else:
                         for weight in neuron.weights:
                             
-                            color = rgbtohex(r = round((1-min_max_normalize(weight))*255), g = 0, b = 0)
+                            color = rgbtohex(r = round((1-min_max_normalize(weight))*25), g = 0, b = 0)
                             parent.create_line(prev[0], prev[1], x0, y0, 
                                         fill=color)
         
@@ -304,7 +309,9 @@ output_layer = layer(1, "output")
 layer_structure = [input_layer, hidden_layer1, output_layer]
 net = NeuralNet(len(layer_structure), layer_structure, [[[1, 0],[0]],[[0, 1],[0]],[[1, 1],[1]],[[0, 0],[0]]])
 net.createLayers()
-# net.train(net.dataset, 0.2, 1200)
+net.train(net.dataset, 0.2)
+net.train(net.dataset, 0.2)
+net.train(net.dataset, 0.2)
 create_visualization() #DEBUG #TEMP
 
 
