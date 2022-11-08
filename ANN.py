@@ -13,9 +13,11 @@ import xdrlib
 seed(29)
 
 NODE_DISPLAY_SIZE = 40
-NODE_DISPLAY_XPAD = 40
+NODE_DISPLAY_XPAD = NODE_DISPLAY_SIZE * 3
 NODE_DISPLAY_YPAD = 20
 NODE_DISPLAY_HEIGHT = NODE_DISPLAY_SIZE+NODE_DISPLAY_YPAD
+
+TRAINING_RATE = .8
 
 
 updateVisNodeValues = False
@@ -196,13 +198,12 @@ class NeuralNet:
 
     def draw(self, parent, x, y):
         # Draws first layer
-        w_index = 0
         y0 = y + 1/2 * (self.max_layer_size - len(self.layers[0].neurons)) * NODE_DISPLAY_HEIGHT
         previous_node_centers = self.layers[0].draw(parent, x, y0, [], self.weights_linear)
         
         # Draws the rest
         for i, layer in enumerate(self.layers[1:], start = 1):
-            x0 = x+i*NODE_DISPLAY_HEIGHT
+            x0 = x+i*NODE_DISPLAY_XPAD
             y0 = y + 1/2 * (self.max_layer_size - len(layer.neurons)) * NODE_DISPLAY_HEIGHT
             previous_node_centers = layer.draw(parent,
                                        x0,
@@ -213,8 +214,8 @@ class NeuralNet:
             #print(previous_node_centers)
 
     def train_and_draw(self): #WIP
-        self.train(self.dataset, 0.2)
-        self.draw(self.canvas, 0, 0)
+        self.train(self.dataset, TRAINING_RATE)
+        self.draw(self.canvas, 50, 50)
         self.canvas.after(100, func=self.train_and_draw)
 
     def __str__(self):
@@ -260,18 +261,31 @@ class layer:
                     #print(len(self.neurons))
                     if self.type == "output":
                         print("===")
+                        for errorSig in neuron.errorSignals:
+                            errorColours=128-math.ceil(128*(errorSig/2))
+                            color = rgbtohex(r = 255, g = errorColours, b = 255)
+                            #print(color, " ", errorSig, "ErrorSigColours", errorColours)
+                            parent.create_line(prev[0], prev[1], x0, y0-4, 
+                                        fill=color, width=2)
                         for receivingFromNeuron in neuron.receivingFrom.neurons:
                             for weight in receivingFromNeuron.weights:
-                                color = rgbtohex(r = round((min_max_normalize(weight))*255), g = 100, b = 110)
-                                print(color, " ", weight)
+                                weightcolours=255-math.ceil(255*(weight/2))
+                                color = rgbtohex(r = 255, g = 255, b = weightcolours)
+                                #print(color, " ", weight, "WeightCOlours", weightcolours)
                                 parent.create_line(prev[0], prev[1], x0, y0, 
-                                            fill=color)
+                                            fill=color, width=2)
                     else:
                         for weight in neuron.weights:
-                            
-                            color = rgbtohex(r = round((min_max_normalize(weight))*255), g = 0, b = 0)
+                            weightcolours=255-math.ceil(255*(weight/2))
+                            color = rgbtohex(r = 255, g = 255, b = weightcolours)
+                            parent.create_line(prev[0], prev[1], x0, y0-4, 
+                                        fill=color, width=2)
+                        for errorSig in neuron.errorSignals:
+                            errorColours=128-math.ceil(128*(errorSig/2))
+                            color = rgbtohex(r = 255, g = errorColours, b = 255)
+                            print(color, " ", errorSig, "ErrorSigColours", errorColours)
                             parent.create_line(prev[0], prev[1], x0, y0, 
-                                        fill=color)
+                                        fill=color, width=2)
         
         return current_node_centers
 
@@ -314,10 +328,10 @@ def create_visualization():
     root.mainloop()
      
 input_layer = layer(2, "input")
-hidden_layer1 = layer(5, "hidden")
+hidden_layer1 = layer(1, "hidden")
 output_layer = layer(1, "output")
 layer_structure = [input_layer, hidden_layer1, output_layer]
-net = NeuralNet(len(layer_structure), layer_structure, [[[1, 0],[0]],[[0, 1],[0]],[[1, 1],[1]],[[0, 0],[0]]])
+net = NeuralNet(len(layer_structure), layer_structure, [[[1, 0],[1]],[[0, 1],[1]],[[1, 1],[0]],[[0, 0],[0]]])
 net.createLayers()
 create_visualization() #DEBUG #TEMP
 
