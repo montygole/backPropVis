@@ -1,5 +1,3 @@
-A visualization of backpropagation with and AND gate
-
 AUTHORS
 ---------------
 
